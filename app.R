@@ -1,107 +1,140 @@
 #####################################
 
-# Building an Interactive Histogram #
-# for Air Quality Data Set          #
+# Building a ML / Data-Driven       # 
+#Web Application in R               #
 
-# Particularly the Ozone Levels     #
+# This will make use of the random  #
+#forest algorithm. It aims to       #
+#predict whether or not to play     #
+#golf as a function of the input    #
+#weather parameters.                #
+
+# Check out uploaded pdf for more   #
+#info:                              #
 
 
 # Used this as reference: http://youtube.com/dataprofessor #
 
+#####################################
+
 library(shiny)
-# will be using the air quality data set
-data(airquality)
+library(shinythemes)
+library(data.table)
+library(RCurl)
+library(randomForest)
 
-# Define UI for application that draws a histogram
-ui <- fluidPage(
 
-    # Application title
-    titlePanel("Ozone level"),
+# Read the data
+weather <- read.csv(text = getURL("https://raw.githubusercontent.com/dataprofessor/data/master/weather-weka.csv"))
 
-    # Sidebar with input and output definitions
-    
-    sidebarLayout(
+
+# Build mordel
+model <- randomForest(play ~ ., data = weather, ntree = 500, mtry = 4, importance = TRUE)
+
+# Save model to RDS file
+# saveRDS(model, "model.rds")
+
+# Read in the RF model
+# model <- readRDS("model.rds")
+
+
+###########################
+##### User Interfrace #####
+###########################
+
+
+# Define UI for app
+
+ui <- fluidPage(theme = shinytheme("united"),
+
+    # Page header
+    headerPanel('Play Golf?'),
+
+    # Input values
+    sidebarPanel(
+        HTML("<h3>Input Parameters</h3>"),
         
-        # Sidebar panel for inputs ----
-        sidebarPanel(
-            
-            # Input: Slider for the number of bins ----
-            sliderInput(inputId = "bins",
-                        # "bins" is what the server output will recognize
-                        label = "Number of bins:",
-                        min = 0,
-                        max = 50,
-                        value = 30,
-                        step = 1)
-            # the default value is 30
-            # notice: the step size is 1
-                # to modify it, use "step"
-            
-        ),
+        selectInput("outlook", label = "Outlook:",
+                    choices = list("Sunny" = "sunny", "Overcast" = "overcast", "Rainy" = "rainy"),
+                    selected = "Rainy"),
+        sliderInput("temperature", "Temperature:",
+                    min = 64, max = 86,
+                    value = 70),
+        sliderInput("humidity", "Humidity:",
+                    min = 65, max = 96,
+                    value = 90),
+        selectInput("windy", label = "Windy:",
+                    choices = list("Yes" = "TRUE", "No" = "FALSE"),
+                    selected = "TRUE"),
+        
+        actionButton("submitbutton", "Submit", class = "btn btn-primary")
+    ),
 
-        # Show a plot of the generated distribution;
-        # Main panel for displaying outputs ----
-        mainPanel(
-            
-            
-            # output: Histogram ----
-           plotOutput(outputId = "distPlot")
-           
-        )
+    mainPanel(
+        tags$label(h3('Status/Output')), # Status/Output Text Box
+        verbatimTextOutput('contents'),
+        tableOutput('tabledata') # Prediction results table
     )
-)
+ ) 
 
-# Define server logic required to draw a histogram
-server <- function(input, output) {
 
-    
-    
-    
-    output$distPlot <- renderPlot({
-        # this will generate an output called "distPlot"
-        # notice b/c on line #48 outputId is "distPlot"
-        # So, the server will output this obj called "distPlot"
-        #and send it to the UI component for display on the main panel
-        
-        
-        
-        x <- airquality$Ozone
-        # from airquality dataset and use "$" to specify the column
-        # call it "Ozone"
-        x <- na.omit(x)
-        # this code above, omits the missing values within the col
-        #"Ozone"
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-        # the "bins" variable determines what is the min value of 
-        #the bin and what is the max value of the bin
+##################
+##### Server #####
+##################
 
+# Define server the logic
+
+server <- function(input, output, session) {
+    
+    # Input data
+    datasetInput < reactive({
         
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = "#75AADB", border = 'black',
-             xlab = "Ozone level",
-             main = "Histogram of Ozone level")
+        # outlook, temp, humidity, wind, play
+        df <- data.frame(
+            Name = c("outlook",
+                     "temperature",
+                     "humidity",
+                     "wind"),
+            Value = as.character(c(input$outlook,
+                                   input$temperature,
+                                   input$humidity,
+                                   input$wind)),
+            stringsAsFactors = FALSE)
         
-        # the "hist" (histogram fcn) has "x" which is the input data
-        #which is the airqulity dataset; specifically data in the 
-        # "Ozone" column, omitting the NA vals
-        # the colour of the hist is blue
+        play <- "play"
+        df <- rbind(df, play)
+        input <- transpose(df)
+        write.table(input, "input.csv", sep=",", quote = FALSE, row.names = FALSE, col.names = FALSE)
+        
+        test <- read.csv(paste("input", ".csv", sep = ""), header = TRUE)
+        
+        test$outlook <- factor(test$outlook, levels = c("overcast", "rainy", "sunny"))
         
         
+        Output <- data.frame(Prediction=predict(model, test), round(predict(model, test, type="prob"), 3))
+        print(Output)
+        
+                             
     })
     
+    # Status/Output Text Box
+    output$contents <- renderPrint({
+        if (input$submitbutton>0) {
+            isolate("Calculation complete.")
+        } else {
+            return("Server is ready for calculation.")
+        }
+    })
+    
+    # Prediction results table
+    output$tabledata <- renderTable({
+        if (input$submitbutton>0) {
+            isolate(datasetInput())
+        }
+    })
     
 }
 
-# Create Shiny App
+
+# Run the application 
 shinyApp(ui = ui, server = server)
-# So, this "shinyApp" function will fuse together the
-#UI component and server component
-# So, the code communicates between the UI and the Server
-# UI = accepts input, which is the # of bins and it will send
-#the # of bins to the server component and
-#server = will generate the histogram plot and the histogram plot
-#will be contained within this output; this plot and it will
-#be sent to the plot output fcn in the main panel of the UI 
-#thus, the generation of the histogram
-# On the app, we can see that adjusting the sidepanel bar corresponds
-#to histogram changing in terms of the # of bins that appear
