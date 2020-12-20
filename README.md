@@ -1,2 +1,4 @@
 # WebAppsInR
-Exploring how to make web apps using R.
+Exploring how to build web apps using R.
+
+git reset --hard HEAD~2
