@@ -25,7 +25,15 @@ library(randomForest)
 
 
 # Read the data; create data object 
-weather <- read.csv(text = getURL("https://raw.githubusercontent.com/dataprofessor/data/master/weather-weka.csv"))
+weather <- read.csv('weather-weka.csv')
+
+# NOTE: Before you run the line of code above, ensure to set the correct working directory; 
+#i.e. the location in which the csv fle is located in.
+# Look at the following comments below (lines 33-36) (this will also be mentioned in the pdf).
+# print(getwd())
+# ...
+# setwd(...)
+# After the working directory is set, run the 'read.csv()' function as shown above.
 
 
 # Build mordel to make a prediction
