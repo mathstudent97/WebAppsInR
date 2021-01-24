@@ -11,4 +11,6 @@ Get a glimpse of the Web Apps below:
 
 [3_WebApp](https://vernamariemaullon97.shinyapps.io/toPlayGolf_basedOnWeather/)
 
-Note: The files not within folders are rough drafts regarding the apps.
+
+
+NOTE: The files not within folders are rough drafts regarding the apps.
